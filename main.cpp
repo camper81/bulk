@@ -3,61 +3,6 @@
 #include <vector>
 #include <fstream>
 
-class Parser;
-
-struct State
-{
-    virtual void getCommand(Parser *parser, std::string& cmd) = 0;
-
-    virtual void openBracket(Parser *parser) = 0;
-
-    virtual void closeBracket(Parser *parser) = 0;
-
-    virtual void endFile(Parser *parser) = 0;
-};
-
-struct BulkState : State
-{
-    int n_blocks_;
-    std::vector<std::string> cmds_;
-    time_t first_cmd_ = 0;
-
-    BulkState(int n_blocks) : n_blocks_(n_blocks) {};
-
-    void getCommand(Parser* parser, std::string& cmd) override;
-
-    void openBracket(Parser* parser) override;
-
-    void closeBracket(Parser* parser) override
-    {
-    }
-
-    void endFile(Parser *parser) override;
-};
-
-struct OpenBracketState : State
-{
-    int level_;
-    std::vector<std::string> cmds_;
-    time_t first_cmd_ = 0;
-
-    void getCommand(Parser* parser, std::string& cmd) override
-    {
-        if(first_cmd_ == 0)
-            first_cmd_ = time(NULL);
-        cmds_.push_back(cmd);
-    }
-
-    void openBracket(Parser* parser) override
-    {
-        level_++;
-    }
-    void closeBracket(Parser* parser) override;
-
-    void endFile(Parser *parser) override{
-
-    };
-};
 
 void flush(std::ostream& os, std::vector<std::string>& vec) {
     os << "bulk: ";
@@ -82,6 +27,61 @@ void flushCommands(time_t first_cmd, std::vector<std::string>& vec){
 
     vec.clear();
 }
+
+class Parser;
+
+class State
+{
+public:
+    virtual void getCommand(Parser *parser, std::string& cmd) = 0;
+
+    virtual void openBracket(Parser *parser) = 0;
+
+    virtual void closeBracket(Parser *parser) = 0;
+
+    virtual void endFile(Parser *parser) = 0;
+};
+
+class BulkState : public State
+{
+    int n_blocks_;
+    std::vector<std::string> cmds_;
+    time_t first_cmd_ = 0;
+public:
+    BulkState(int n_blocks) : n_blocks_(n_blocks) {};
+
+    void getCommand(Parser* parser, std::string& cmd) override;
+
+    void openBracket(Parser* parser) override;
+
+    void closeBracket(Parser* parser) override {
+    }
+
+    void endFile(Parser *parser) override;
+};
+
+class OpenBracketState : public State
+{
+    int level_;
+    std::vector<std::string> cmds_;
+    time_t first_cmd_ = 0;
+public:
+    void getCommand(Parser* parser, std::string& cmd) override
+    {
+        if(first_cmd_ == 0)
+            first_cmd_ = time(NULL);
+        cmds_.push_back(cmd);
+    }
+
+    void openBracket(Parser* parser) override
+    {
+        level_++;
+    }
+    void closeBracket(Parser* parser) override;
+
+    void endFile(Parser *parser) override {
+    };
+};
 
 class Parser
 {
@@ -133,8 +133,6 @@ public:
         EOF_ = true;
         state_->endFile(this);
     }
-
-
 };
 
 void BulkState::endFile(Parser *parser) {
@@ -159,9 +157,7 @@ void OpenBracketState::closeBracket(Parser *parser) {
         flushCommands(first_cmd_, cmds_);
         parser->set_state(new BulkState(parser->getNBlocks()));
         delete this;
-        return;
     }
-
 }
 
 
