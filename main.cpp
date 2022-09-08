@@ -85,14 +85,14 @@ public:
 
 class Parser
 {
-    State* state_;
     int n_blocks_ = 3;
     bool EOF_ = false;
+
 public:
 
     Parser(int n_blocks) : n_blocks_(n_blocks)
     {
-        state_ = new BulkState(n_blocks_);
+
     }
     int getNBlocks() const {
         return n_blocks_;
